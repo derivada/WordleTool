@@ -1,0 +1,9 @@
+#Wordle Settings
+#Wed Jan 26 18:00:54 CET 2022
+expert-mode=false
+word-size=5
+dictionary-path=dict.txt
+language=en
+max-rounds=6
+test-mode=1
+test-size=5000
