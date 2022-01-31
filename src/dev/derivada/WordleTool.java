@@ -2,7 +2,9 @@ package dev.derivada;
 
 
 import java.io.*;
+import java.lang.reflect.Array;
 import java.util.*;
+import java.util.concurrent.ForkJoinTask;
 import java.util.stream.Stream;
 
 /**
@@ -44,7 +46,7 @@ public class WordleTool {
     public static void main(String[] args) {
         Locale.setDefault(Locale.ENGLISH);
         loadConfig();
-        if (!preprocessing()) {
+        if (!setup()) {
             System.out.println("Data preprocessing failed!");
             return;
         }
@@ -61,9 +63,15 @@ public class WordleTool {
         }
 
         switch (test_mode) {
-            case 1 -> repeatedTest(test_size, number_of_tests, time_between_tests);
-            case 2 -> repeatedTestPrimes(test_size, number_of_tests, time_between_tests);
-            default -> System.out.println("Couldn't recognize test mode!");
+            case 1:
+                repeatedTest(test_size, number_of_tests, time_between_tests);
+                break;
+            case 2:
+                repeatedTestPrimes(test_size, number_of_tests, time_between_tests);
+                break;
+            default:
+                System.out.println("Couldn't recognize test mode!");
+                break;
         }
 
         saveConfig();
@@ -135,6 +143,29 @@ public class WordleTool {
             clueTypes[i] = DEFAULT_CLUES.get(i).getType();
             clueLetters[i] = DEFAULT_CLUES.get(i).getLetter();
         }
+        // Sort the clueTypes and clueLetters parallel arrays by the sortedClues order
+        int a = 0;
+        int[] clueTypesSorted = new int[clueTypes.length];
+        char[] clueLettersSorted = new char[clueLetters.length];
+
+        for (Clue c : sortedClues) {
+            for (int i = 0; i < clueLetters.length; i++) {
+                if (c.getLetter() == clueLetters[i] && c.getType() == clueTypes[i]) {
+                    clueTypesSorted[a] = clueTypes[i];
+                    clueLettersSorted[a] = clueLetters[i];
+                    a++;
+                    break;
+                }
+            }
+        }
+        clueLetters = clueLettersSorted;
+        clueTypes = clueTypesSorted;
+
+        // Convert clueLetters to get adequate indexes in the primes array
+        int[] clueLettersInt = new int[clueLetters.length];
+        for (int i = 0; i < clueLetters.length; i++)
+            clueLettersInt[i] = (int) clueLetters[i] - 97;
+
 
         for (int i = 0; i < number_of_tests; i++) {
             System.out.printf("TEST %d | ", i);
@@ -142,9 +173,9 @@ public class WordleTool {
             long startTime, stopTime;
             startTime = System.currentTimeMillis();
             // Save first iteration results
-            results = solvePrimes(clueTypes, clueLetters, 0);
+            results = solveMultithread(clueTypes, clueLetters, clueLettersInt,0);
             for (int j = 1; j < test_size; j++) {
-                solvePrimes(clueTypes, clueLetters, 0);
+                solveMultithread(clueTypes, clueLetters,clueLettersInt, 0);
             }
             stopTime = System.currentTimeMillis();
             testTimes[i] = stopTime - startTime;
@@ -211,7 +242,7 @@ public class WordleTool {
      * @return A boolean indicating if the preprocessing was successful
      */
 
-    private static boolean preprocessing() {
+    private static boolean setup() {
         // Part 1. Reads the dictionary and puts it inside the words array
         boolean flag = true;
         File dict = new File(config.getProperty("dictionary-path"));
@@ -310,7 +341,7 @@ public class WordleTool {
         return Arrays.copyOfRange(solution, 0, Math.min(solution.length, maxLength));
     }
 
-    private static String[] solvePrimes(int[] clueTypes, char[] clueLetters, int maxLength) {
+    private static String[] solveOptimized(int[] clueTypes, char[] clueLetters, int maxLength) {
         // AVG ITER TIME: 0.0966ms
         assert clueTypes.length == clueLetters.length;
         assert words.length == wordValues.length;
@@ -374,72 +405,15 @@ public class WordleTool {
         return Arrays.copyOfRange(solution, 0, Math.min(n, maxLength));
     }
 
-
-    private static String[] solvePrimesMultiThread(int[] clueTypes, char[] clueLetters, int maxLength) {
-        // AVG ITER TIME: 0.0966ms
-        assert clueTypes.length == clueLetters.length;
-        assert words.length == wordValues.length;
-        if (maxLength <= 0) {
-            maxLength = Integer.MAX_VALUE;
-        }
-
-        int processors = Runtime.getRuntime().availableProcessors();
-
-        String[] solution = new String[words.length];
-        String word;
-        int value, p, n = 0;
-
-        // Apply sort order to clueTypes
-        int a = 0;
-        int[] clueTypesSorted = new int[clueTypes.length];
-        char[] clueLettersSorted = new char[clueLetters.length];
-
-        for (Clue c : sortedClues) {
-            for (int i = 0; i < clueLetters.length; i++) {
-                if (c.getLetter() == clueLetters[i] && c.getType() == clueTypes[i]) {
-                    clueTypesSorted[a] = clueTypes[i];
-                    clueLettersSorted[a] = clueLetters[i];
-                    a++;
-                    break;
-                }
-            }
-        }
-        clueLetters = clueLettersSorted;
-        clueTypes = clueTypesSorted;
-
-        // Convert clueLetters to get adequate indexes in the primes array
-        int[] clueLettersInt = new int[clueLetters.length];
-        for (int i = 0; i < clueLetters.length; i++)
-            clueLettersInt[i] = (int) clueLetters[i] - 97;
-
-        // Sort the clues arrays
-        WORD:
-        for (int i = 0; i < words.length; i++) {
-            word = words[i];
-            for (int j = 0; j < clueLetters.length; j++) {
-                value = wordValues[i];
-                p = primes[clueLettersInt[j]];
-                switch (clueTypes[j]) {
-                    case -1:
-                        if ((value % p == 0))
-                            continue WORD;
-                        break;
-                    case 0:
-                        if ((value % p != 0))
-                            continue WORD;
-                        break;
-                    default:
-                        if ((value % p != 0) && (word.indexOf(clueLetters[j]) != clueTypes[j]))
-                            continue WORD;
-                        break;
-                }
-            }
-            solution[n] = word;
-            n++;
-        }
-
-        return Arrays.copyOfRange(solution, 0, Math.min(n, maxLength));
+    private static String[] solveMultithread(int[] clueTypes, char[] clueLetters, int[] clueLettersInt, int maxLength) {
+        List<String> solution = new ArrayList<>(words.length);
+        ParallelSolver.setup(words, wordValues, solution, clueTypes, clueLetters, clueLettersInt, maxLength);
+        ParallelSolver solver = new ParallelSolver(0, words.length);
+        solver.invoke();
+        solver.join();
+        return solver.getSolution().toArray(new String[0]);
     }
+
     private static void loadConfig() {
         File configFile = new File(CONFIG_FILE);
         config = new Properties();
@@ -464,7 +438,6 @@ public class WordleTool {
         config.setProperty("test-size", "1000");
         config.setProperty("number-of-tests", "1");
         config.setProperty("time-between-tests", "0");
-
     }
 
     private static void saveConfig() {

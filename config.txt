@@ -1,11 +1,11 @@
 #Wordle Settings
-#Thu Jan 27 16:47:33 CET 2022
+#Mon Jan 31 19:01:14 CET 2022
 expert-mode=false
 word-size=5
 dictionary-path=dict.txt
 language=en
 max-rounds=6
 test-mode=2
-test-size=10000
+test-size=100000
 number-of-tests=10
 time-between-tests=100
