@@ -22,7 +22,7 @@ typedef struct
     char letter;
 } clue;
 
-typedef int (*solver)(int*, clue*, int, int);
+typedef int (*solver)(int *, clue *, int, int);
 
 typedef struct
 {
@@ -59,7 +59,7 @@ clue defaultClues[4] = {
 int setup();
 int applyClue(int *resultIndexes, int *dictIndexes, int wordListSize, clue clue);
 void sortClues(clue *clues, int orderArray[], int cluesSize);
-void test(int test_size, int number_of_tests, solver solver, char* solverName);
+void test(int test_size, int number_of_tests, solver solver, char *solverName);
 void printResults(clue *clues, int clueSize, int *result, int n, int maxLines);
 void printClue(clue c);
 int solveOptimized(int *result, clue *clues, int cluesSize, int maxLength);
@@ -327,7 +327,7 @@ int solveOptimizedMultithread(int *result, clue *clues, int cluesSize, int maxLe
     return n;
 }
 
-void test(int test_size, int number_of_tests, solver solver, char* solverName)
+void test(int test_size, int number_of_tests, solver solver, char *solverName)
 {
     int *result = (int *)malloc(dictSize * sizeof(int));
     int n;
@@ -411,4 +411,4 @@ void printClue(clue c)
         break;
     }
 }
-void test(int test_size, int number_of_tests, solver solver, char* solverName);
+void test(int test_size, int number_of_tests, solver solver, char *solverName);
